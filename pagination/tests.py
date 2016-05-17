@@ -1,7 +1,7 @@
 """
 >>> from django.core.paginator import Paginator
 >>> from pagination.templatetags.pagination_tags import paginate
->>> from django.template import Template, Context
+>>> from django.template.base import Template, Context
 
 >>> p = Paginator(range(15), 2)
 >>> pg = paginate({'paginator': p, 'page_obj': p.page(1)})

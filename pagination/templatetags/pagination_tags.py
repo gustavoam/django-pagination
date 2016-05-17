@@ -4,7 +4,7 @@ except NameError:
     from sets import Set as set
 
 from django import template
-from django.template import TOKEN_BLOCK
+from django.template.base import TOKEN_BLOCK
 from django.http import Http404
 from django.core.paginator import Paginator, InvalidPage
 from django.conf import settings
@@ -156,8 +156,8 @@ def paginate(context, window=DEFAULT_WINDOW, hashtag=''):
             records['last'] = paginator.count
         # First and last are simply the first *n* pages and the last *n* pages,
         # where *n* is the current window size.
-        first = set(page_range[:window])
-        last = set(page_range[-window:])
+        first = set(tuple(page_range)[:window])
+        last = set(tuple(page_range)[-window:])
         # Now we look around our current page, making sure that we don't wrap
         # around.
         current_start = page_obj.number-1-window
@@ -166,7 +166,7 @@ def paginate(context, window=DEFAULT_WINDOW, hashtag=''):
         current_end = page_obj.number-1+window
         if current_end < 0:
             current_end = 0
-        current = set(page_range[current_start:current_end])
+        current = set(tuple(page_range)[current_start:current_end])
         pages = []
         # If there's no overlap between the first set of pages and the current
         # set of pages, then there's a possible need for elusion.
