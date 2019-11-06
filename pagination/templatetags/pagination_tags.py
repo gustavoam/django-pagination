@@ -4,6 +4,7 @@ except NameError:
     from sets import Set as set
 
 from django import template
+from django.template import loader
 from django.template.base import TokenType
 from django.http import Http404
 from django.core.paginator import Paginator, InvalidPage
@@ -21,12 +22,12 @@ def do_autopaginate(parser, token):
     """
     Splits the arguments to the autopaginate tag and formats them correctly.
     """
-    
+
     # Check whether there are any other autopaginations are later in this template
     expr = lambda obj: (obj.token_type == TokenType.BLOCK.value and \
         len(obj.split_contents()) > 0 and obj.split_contents()[0] == "autopaginate")
     multiple_paginations = len(list(filter(expr, parser.tokens))) > 0
-    
+
     split = token.split_contents()
     as_index = None
     context_var = None
@@ -45,7 +46,7 @@ def do_autopaginate(parser, token):
     if len(split) == 2:
         return AutoPaginateNode(split[1], multiple_paginations=multiple_paginations)
     elif len(split) == 3:
-        return AutoPaginateNode(split[1], paginate_by=split[2], 
+        return AutoPaginateNode(split[1], paginate_by=split[2],
             context_var=context_var, multiple_paginations=multiple_paginations)
     elif len(split) == 4:
         try:
@@ -62,16 +63,16 @@ def do_autopaginate(parser, token):
 class AutoPaginateNode(template.Node):
     """
     Emits the required objects to allow for Digg-style pagination.
-    
+
     First, it looks in the current context for the variable specified, and using
-    that object, it emits a simple ``Paginator`` and the current page object 
+    that object, it emits a simple ``Paginator`` and the current page object
     into the context names ``paginator`` and ``page_obj``, respectively.
-    
+
     It will then replace the variable specified with only the objects for the
     current page.
-    
+
     .. note::
-        
+
         It is recommended to use *{% paginate %}* after using the autopaginate
         tag.  If you choose not to use *{% paginate %}*, make sure to display the
         list of available pages, or else the application may seem to be buggy.
@@ -92,7 +93,7 @@ class AutoPaginateNode(template.Node):
             page_suffix = '_%s' % self.queryset_var
         else:
             page_suffix = ''
-        
+
         key = self.queryset_var.var
         value = self.queryset_var.resolve(context)
         if isinstance(self.paginate_by, int):
@@ -119,26 +120,27 @@ class AutoPaginateNode(template.Node):
         return u''
 
 
-def paginate(context, window=DEFAULT_WINDOW, hashtag=''):
+@register.simple_tag(takes_context=True)
+def paginate(context, window=DEFAULT_WINDOW, hashtag='', template_name='pagination/pagination.html'):
     """
     Renders the ``pagination/pagination.html`` template, resulting in a
     Digg-like display of the available pages, given the current page.  If there
     are too many pages to be displayed before and after the current page, then
     elipses will be used to indicate the undisplayed gap between page numbers.
-    
+
     Requires one argument, ``context``, which should be a dictionary-like data
     structure and must contain the following keys:
-    
+
     ``paginator``
         A ``Paginator`` or ``QuerySetPaginator`` object.
-    
+
     ``page_obj``
-        This should be the result of calling the page method on the 
+        This should be the result of calling the page method on the
         aforementioned ``Paginator`` or ``QuerySetPaginator`` object, given
         the current page.
-    
+
     This same ``context`` dictionary-like data structure may also include:
-    
+
     ``getvars``
         A dictionary of all of the **GET** parameters in the current request.
         This is useful to maintain certain types of state, even when requesting
@@ -202,7 +204,7 @@ def paginate(context, window=DEFAULT_WINDOW, hashtag=''):
             second_list.sort()
             diff = second_list[0] - pages[-1]
             # If there is a gap of two, between the last page of the current
-            # set and the first page of the last set, then we're missing a 
+            # set and the first page of the last set, then we're missing a
             # page.
             if diff == 2:
                 pages.append(second_list[0] - 1)
@@ -238,10 +240,10 @@ def paginate(context, window=DEFAULT_WINDOW, hashtag=''):
                 to_return['getvars'] = "&%s" % getvars.urlencode()
             else:
                 to_return['getvars'] = ''
-        return to_return
+        template = loader.get_template(template_name)
+        return template.render(to_return)
     except (KeyError, AttributeError):
         return {}
 
-register.inclusion_tag('pagination/pagination.html', takes_context=True)(
-    paginate)
+
 register.tag('autopaginate', do_autopaginate)
